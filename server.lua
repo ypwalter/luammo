@@ -79,11 +79,11 @@ AddCommand("HELLO","Hey there!")
 
 --Shortcut to giving the user a command prompt style thing
 function shellPrefix(connection)
-	connection:send("LuaMMO:")
+	connection:send("LuaMMO: ")
 end
 
 --Can you say connection coroutine?
-function NewConnection(connection)
+function NewConnection(conn)
 	conn = copas.wrap(conn)
 	local servertime = os.date("%I:%M%p")
 	conn:send("Welcome to LuaMMO.\r\n")
@@ -91,19 +91,11 @@ function NewConnection(connection)
 	conn:send("Please enter your login details for LuaMMO\r\n")
 	shellPrefix(conn)
 	info("New client connected.")
-    -- continue reading from client and writing to client here
-end
-copas.addserver(socket.bind("127.0.0.1", 2220), NewConnection)
-copas.loop()
-
---Loop forever
-while true do
-	local reading,writing,err = socket.select(recvt,nil)
-	for _, server in ipairs(reading) do
-		local message = copas.receieve(server,"*l")
+    while true do
+		local message = conn:receieve("*l")
 		if message == "QUIT" then
 			info("Client disconnected.")
-			server:close()
+			conn:close()
 		elseif message == "LOGIN" then
 			local args = string.explode(" ",message)
 			if args[2] and args[3] then
@@ -111,24 +103,26 @@ while true do
 				local password = args[3]
 				if users[username] then
 					if users[username].password == password then
-						server:send("LuaMMO: Logged in! Welcome.\r\n")
+						conn:send("LuaMMO: Logged in! Welcome.\r\n")
 						info("User "..username.." has logged in.")
 					else
-						server:send("LuaMMO: Incorrect password.\r\n")
-						info("Failed login attempt on username "..username.." from "..server:getpeername()..".")
+						conn:send("LuaMMO: Incorrect password.\r\n")
+						info("Failed login attempt on username "..username.." from "..conn:getpeername()..".")
 					end
 				else
-					server:send("LuaMMO: Incorrect username.\r\n")
+					conn:send("LuaMMO: Incorrect username.\r\n")
 					info("User tried to login with the non-existant username "..username..".")
 				end
 			else
-				server:send("LuaMMO: Incorrect syntax. USAGE: LOGIN Username Password\r\n")
+				conn:send("LuaMMO: Incorrect syntax. USAGE: LOGIN Username Password\r\n")
 			end
 		else
 			local response = ParseCommand(message)
 			if response == nil then response = "LuaMMO: Invalid command." end
-			server:send(response.."\r\n")
+			conn:send(response.."\r\n")
 		end
-		shellPrefix(server)
+		shellPrefix(conn)
 	end
 end
+copas.addserver(socket.bind("127.0.0.1", 2220), NewConnection)
+copas.loop()
