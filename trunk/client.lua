@@ -28,12 +28,13 @@ end
 
 function AddCommand(command, response, callback)
 	if command then
+		commands[command] = {}
 		if response or callback then
 			if callback then
 					commands[command].callback = callback
 			end
 			if response then
-				commands[command].callback = callback
+				commands[command].response = response
 			end
 		else
 			print("LuaMMO: Error adding command. No callback or response specified when adding function "..command..".")
@@ -44,7 +45,7 @@ function AddCommand(command, response, callback)
 end
 
 --Add default commands
-AddCommand("QUIT","LuaMMO: Shutting down.",exit)
+AddCommand("QUIT","LuaMMO: Shutting down.",os.exit)
 
 function Receive()
 	while true do
@@ -64,7 +65,7 @@ coroutine.create(Receive)
 while true do
 	--Get input
 	local input = io.read()
-	if ParseCommand(input) == false then
+	if ParseCommand(input) == nil then
 		--Send input
 		client:send(input)	
 	else
