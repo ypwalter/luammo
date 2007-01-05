@@ -1,6 +1,14 @@
 --LuaMMO server by Polarity
 --Connect to this on port 2220 using telnet to play the game.
 
+--Create our info function. Does formatting for us automatically.
+function info(message)
+	print("LuaMMO: "..message)
+end
+
+--Say what we're doing, loading the socket library
+info("Loading socket library.")
+
 --Load the socket library
 require("socket")
 
@@ -8,8 +16,8 @@ require("socket")
 listening = socket.tcp()
 
 --Set the client to listen
-assert(listening:bind("127.0.0.1",2220))
-assert(listening:listen())
+listening:bind("127.0.0.1",2220)
+listening:listen()
 
 --Create connections table
 recvt = {}
@@ -34,7 +42,7 @@ function ParseCommand(command)
 	end
 end
 
-function AddCommand(command, response, callback)
+function AddCommand(command, response, callback, arg1, args2, arg3, arg4)
 	if command then
 		commands[command] = {}
 		if response or callback then
@@ -45,15 +53,41 @@ function AddCommand(command, response, callback)
 				commands[command].response = response
 			end
 		else
-			print("LuaMMO: Error adding command. No callback or response specified when adding function "..command..".")
+			info("Error adding command. No callback or response specified when adding function "..command..".")
 		end
 	else
-		print("LuaMMO: Not enough args to AddCommand request")
+		info("Not enough args to AddCommand request")
 	end
 end
 
 --Create default commands
 AddCommand("HELLO","Hey there!")
+
+--Can you say connection coroutine?
+function NewConnection(connection)
+	local servertime = os.date("%I:%M%p")
+	local connection = listening:accept()
+	table.insert(recvt,connection)
+	connection:send("Welcome to LuaMMO.\r\n")
+	connection:send("Server time is "..servertime.."\r\n")
+	connection:send("Please enter your login details for LuaMMO\r\n")
+	connection:send("Login: ")
+	info("New client connected.")
+end
+
+function createConnectionRoutine(connection)
+    local handler = coroutine.create(NewConnection)
+    coroutine.resume(handler, connection)
+    return handler
+end
+
+function getData()
+
+end
+
+function setData()
+
+end
 
 --Loop forever
 while true do
@@ -61,22 +95,17 @@ while true do
 	local reading,writing,err = socket.select(recvt,nil)
 	
 	if reading[listening] then
-		local servertime = os.date("%I:%M%p")
-		local connected = listening:accept()
-		table.insert(recvt,connected)
-		connected:send("Welcome to LuaMMO.\r\n")
-		connected:send("Server time is "..servertime.."\r\n")
-		connected:send("Please enter your login details for LuaMMO\r\n")
-		connected:send("Login: ")
-		print("LuaMMO: New client connected.")
+		recvt[listening] = {}
+		recvt[listening].handler = createConnectionRoutine(listening)
 	else
 		for _, server in ipairs(reading) do
 			local message = server:receive("*l")
 			if message == "QUIT" then
+				info("Client disconnected.")
 				server:close()
 			else
 				local response = ParseCommand(message)
-				if response == nil then response = "LuaSQL: Invalid command." end
+				if response == nil then response = "LuaMMO: Invalid command." end
 				server:send(response.."\r\n")
 			end
 		end
