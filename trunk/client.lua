@@ -6,8 +6,14 @@ print("LuaMMO: Loading socket library.")
 --Load the socket library
 require("socket")
 
+--Load our threading hack
+require("dispatch")
+
+--Create the thread handler
+handler = dispatch.newhandler()
+
 --Create the connection object
-client,err = socket.tcp()
+client,err = handler.tcp()
 if client == nil then
 	print("LuaMMO: Couldn't create TCP object. Error was \"".. err .."\"")
 	os.exit()
@@ -17,13 +23,17 @@ end
 print("LuaMMO: Connecting to masterserver.")
 
 --Connect to the masterserver
-err = client:connect("127.0.0.1",2220)
-if err == 1 then
-	print("LuaMMO: Connected to masterserver.")
-else
- 	print("LuaMMO: Couldn't connect to masterserver.")
-	os.exit()
+function Connect()
+	err = client:connect("127.0.0.1",2220)
+	if err == 1 then
+		print("LuaMMO: Connected to masterserver.")
+	else
+	 	print("LuaMMO: Couldn't connect to masterserver.")
+		os.exit()
+	end
 end
+handler:start(Connect)
+handler:step()
 
 --Create our commands table
 commands = {}
@@ -69,11 +79,12 @@ AddCommand("QUIT","LuaMMO: Shutting down.",os.exit)
 function Receive()
 	while true do
 		local message, err = client:receive("*l")
+		handler:step()
 		if err == nil then
 			print(message)
 		else
 			print("LuaMMO: Lost connection to server.")
-			exit()
+			os.exit()
 		end
 	end
 end
@@ -81,15 +92,16 @@ end
 --Say what we're doing, initiating session with server.
 print("LuaMMO: Initiating session with server.")
 
---Start our coroutine to process incoming data
-coroutine.create(Receive)
+handler:start(Receive)
+handler:step()
 
 while true do
 	--Get input
 	local input = io.read()
 	if ParseCommand(input) == nil then
 		--Send input
-		client:send(input.."\n")	
+		client:send(input.."\n")
+		handler:step()
 	else
 		--Show output of the clientside command
 		print(ParseCommand(input))
