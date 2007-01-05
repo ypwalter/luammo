@@ -36,13 +36,6 @@ info("Loading socket library.")
 --Load the socket library
 require("socket")
 
---Create our client object
-listening = socket.tcp()
-
---Set the client to listen
-listening:bind("127.0.0.1",2220)
-listening:listen()
-
 --Create connections table
 recvt = {}
 
@@ -106,7 +99,7 @@ function NewConnection(connection)
 	info("New client connected.")
     -- continue reading from client and writing to client here
 end
-copas.addserver(socket.bind("*", 2200), client)
+copas.addserver(socket.bind("127.0.0.1", 2220), client)
 copas.loop()
 
 --Loop forever
