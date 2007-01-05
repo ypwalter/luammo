@@ -63,13 +63,13 @@ while true do
 	if reading[listening] then
 		local connected = listening:accept()
 		table.insert(recvt,connected)
-		connected:send("Welcome to LuaMMO.")
+		connected:send("Welcome to LuaMMO.\n")
 		print("LuaMMO: New client connected.")
 	else
 		for _, server in ipairs(reading) do
 			local message = server:receive("*l")
 			print(message) --Debuugging only.
-			server:send(ParseCommand(message))
+			server:send(ParseCommand(message).."\n")
 		end
 	end
 	
