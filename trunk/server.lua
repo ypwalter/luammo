@@ -6,6 +6,30 @@ function info(message)
 	print("LuaMMO: "..message)
 end
 
+--string.explode, just like in PHP
+function string.explode(d,p)
+	local t,ll,l
+	t={}
+	ll=0
+	while true do
+		l=string.find(p,d,ll+1,true) -- find the next d in the string
+		if l~=nil then -- if "not not" found then..
+			table.insert(t, string.sub(p,ll,l-1)) -- Save it in our array.
+			ll=l+1 -- save just after where we found it for searching next time.
+		else
+			table.insert(t, string.sub(p,ll)) -- Save what's left in our array.
+			break -- Break at end, as it should be, according to the lua manual.
+		end
+	end
+	return t
+end
+
+--Say what we're doing, loading the threading library
+info("Loading threading library.")
+
+--Load copas
+require("copas")
+
 --Say what we're doing, loading the socket library
 info("Loading socket library.")
 
@@ -24,6 +48,9 @@ recvt = {}
 
 --Add our initial connection to the table
 table.insert(recvt,listening)
+
+--Create the user table
+users = {}
 
 --Create our commands table
 commands = {}
@@ -63,52 +90,58 @@ end
 --Create default commands
 AddCommand("HELLO","Hey there!")
 
+--Shortcut to giving the user a command prompt style thing
+function shellPrefix(connection)
+	connection:send("LuaMMO:")
+end
+
 --Can you say connection coroutine?
 function NewConnection(connection)
+	conn = copas.wrap(conn)
 	local servertime = os.date("%I:%M%p")
-	local connection = listening:accept()
-	table.insert(recvt,connection)
-	connection:send("Welcome to LuaMMO.\r\n")
-	connection:send("Server time is "..servertime.."\r\n")
-	connection:send("Please enter your login details for LuaMMO\r\n")
-	connection:send("Login: ")
+	conn:send("Welcome to LuaMMO.\r\n")
+	conn:send("Server time is "..servertime.."\r\n")
+	conn:send("Please enter your login details for LuaMMO\r\n")
+	shellPrefix(conn)
 	info("New client connected.")
+    -- continue reading from client and writing to client here
 end
-
-function createConnectionRoutine(connection)
-    local handler = coroutine.create(NewConnection)
-    coroutine.resume(handler, connection)
-    return handler
-end
-
-function getData()
-
-end
-
-function setData()
-
-end
+copas.addserver(socket.bind("*", 2200), client)
+copas.loop()
 
 --Loop forever
 while true do
-
 	local reading,writing,err = socket.select(recvt,nil)
-	
-	if reading[listening] then
-		recvt[listening] = {}
-		recvt[listening].handler = createConnectionRoutine(listening)
-	else
-		for _, server in ipairs(reading) do
-			local message = server:receive("*l")
-			if message == "QUIT" then
-				info("Client disconnected.")
-				server:close()
+	for _, server in ipairs(reading) do
+		local message = copas.receieve(server,"*l")
+		if message == "QUIT" then
+			info("Client disconnected.")
+			server:close()
+		elseif message == "LOGIN" then
+			local args = string.explode(" ",message)
+			if args[2] and args[3] then
+				local username = args[2]
+				local password = args[3]
+				if users[username] then
+					if users[username].password == password then
+						server:send("LuaMMO: Logged in! Welcome.\r\n")
+						info("User "..username.." has logged in.")
+					else
+						server:send("LuaMMO: Incorrect password.\r\n")
+						info("Failed login attempt on username "..username.." from "..server:getpeername()..".")
+					end
+				else
+					server:send("LuaMMO: Incorrect username.\r\n")
+					info("User tried to login with the non-existant username "..username..".")
+				end
 			else
-				local response = ParseCommand(message)
-				if response == nil then response = "LuaMMO: Invalid command." end
-				server:send(response.."\r\n")
+				server:send("LuaMMO: Incorrect syntax. USAGE: LOGIN Username Password\r\n")
 			end
+		else
+			local response = ParseCommand(message)
+			if response == nil then response = "LuaMMO: Invalid command." end
+			server:send(response.."\r\n")
 		end
+		shellPrefix(server)
 	end
-	
 end
