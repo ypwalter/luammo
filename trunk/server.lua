@@ -64,12 +64,18 @@ while true do
 		local connected = listening:accept()
 		table.insert(recvt,connected)
 		connected:send("Welcome to LuaMMO.\n")
+		connected:send("Server time is "...os.time().".\n")
 		print("LuaMMO: New client connected.")
 	else
 		for _, server in ipairs(reading) do
 			local message = server:receive("*l")
-			print(message) --Debuugging only.
-			server:send(ParseCommand(message).."\n")
+			if message = "QUIT" then
+				server:close()
+			else
+				local response = ParseCommand(message)
+				if response == nil then response = "LuaSQL: Invalid command." end
+				server:send(response.."\n")
+			end
 		end
 	end
 	
