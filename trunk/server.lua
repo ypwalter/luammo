@@ -61,20 +61,23 @@ while true do
 	local reading,writing,err = socket.select(recvt,nil)
 	
 	if reading[listening] then
+		local servertime = os.date("%I:%M%p")
 		local connected = listening:accept()
 		table.insert(recvt,connected)
-		connected:send("Welcome to LuaMMO.\n")
-		connected:send("Server time is "...os.time().".\n")
+		connected:send("Welcome to LuaMMO.\r\n")
+		connected:send("Server time is "..servertime.."\r\n")
+		connected:send("Please enter your login details for LuaMMO\r\n")
+		connected:send("Login: ")
 		print("LuaMMO: New client connected.")
 	else
 		for _, server in ipairs(reading) do
 			local message = server:receive("*l")
-			if message = "QUIT" then
+			if message == "QUIT" then
 				server:close()
 			else
 				local response = ParseCommand(message)
 				if response == nil then response = "LuaSQL: Invalid command." end
-				server:send(response.."\n")
+				server:send(response.."\r\n")
 			end
 		end
 	end
