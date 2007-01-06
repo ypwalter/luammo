@@ -38,6 +38,12 @@ require("socket")
 
 --Create the user table
 users = {}
+users["Username"] = {}
+users["Username"].password = "Password"
+users["Username"].health = 100
+users["Username"].attack = 5
+users["Username"].defence = 5
+users["Username"].speed = 5
 
 --Create our commands table
 commands = {}
@@ -92,11 +98,12 @@ function NewConnection(conn)
 	shellPrefix(conn)
 	info("New client connected.")
     while true do
-		local message = conn:receieve("*l")
+		local message = conn:receive("*l")
+		print(message)
 		if message == "QUIT" then
 			info("Client disconnected.")
-			conn:close()
-		elseif message == "LOGIN" then
+			return
+		elseif string.sub(message,1,5) == "LOGIN" then
 			local args = string.explode(" ",message)
 			if args[2] and args[3] then
 				local username = args[2]
@@ -105,6 +112,7 @@ function NewConnection(conn)
 					if users[username].password == password then
 						conn:send("LuaMMO: Logged in! Welcome.\r\n")
 						info("User "..username.." has logged in.")
+						conn.username = username
 					else
 						conn:send("LuaMMO: Incorrect password.\r\n")
 						info("Failed login attempt on username "..username.." from "..conn:getpeername()..".")
@@ -115,6 +123,16 @@ function NewConnection(conn)
 				end
 			else
 				conn:send("LuaMMO: Incorrect syntax. USAGE: LOGIN Username Password\r\n")
+			end
+		elseif message == "STATS" then
+			if conn.username then
+				conn:send("Name: "..conn.username.."\r\n")
+				conn:send("Health: "..tostring(users[conn.username].health).."\r\n")
+				conn:send("Attack: "..tostring(users[conn.username].attack).."\r\n")
+				conn:send("Defence: "..tostring(users[conn.username].defence).."\r\n")
+				conn:send("Speed: "..tostring(users[conn.username].speed).."\r\n")
+			else
+				conn:send("LuaMMO: Please login first!\r\n")
 			end
 		else
 			local response = ParseCommand(message)
