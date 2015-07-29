@@ -1,0 +1,1 @@
+An MMORPG written in Lua. There will be clients on Windows, Linux and Mac. I will also write a client for GMod10 once the socket library is released. There will also be an updater for the client. Player data will either be stored flatfile or using LuaSQL.
